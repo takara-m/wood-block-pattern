@@ -1,7 +1,9 @@
 import React, { useEffect, useRef, useState } from 'react';
 import * as THREE from 'three';
+import { useTranslation } from 'react-i18next';
 
 const WoodBlockWave3D = () => {
+  const { t, i18n } = useTranslation();
   const mountRef = useRef(null);
   const [gridSize, setGridSize] = useState(30);
   const [patternNumber, setPatternNumber] = useState(1);
@@ -12,16 +14,16 @@ const WoodBlockWave3D = () => {
   // パターン番号から規則的なパラメータを生成（10×10基本パターン）
   const getPatternParams = (num) => {
     const patterns = [
-      { type: 'sine', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: '水平波（基本）' },
-      { type: 'sine', freq: 3, amp: 3, dir: 0, phase: 0, rotate: true, name: '斜め縞（密）///' },
-      { type: 'sine', freq: 2, amp: 3, dir: 90, phase: 0, rotate: true, name: '斜め縞（標準）///' },
-      { type: 'sine', freq: 2, amp: 3, dir: 45, phase: 0, rotate: false, name: '斜め波45°' },
-      { type: 'double', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: '格子パターン' },
-      { type: 'circular', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: '同心円' },
-      { type: 'sine', freq: 1, amp: 3, dir: 0, phase: 0, rotate: true, name: 'ゆったり斜め縞///' },
-      { type: 'double', freq: 3, amp: 3, dir: 0, phase: 0, rotate: false, name: '細かい格子' },
-      { type: 'sine', freq: 2, amp: 3, dir: 0, phase: 90, rotate: true, name: '位相シフト斜め縞///' },
-      { type: 'checkerboard', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: '市松模様' },
+      { type: 'sine', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: t('patterns.pattern1') },
+      { type: 'sine', freq: 3, amp: 3, dir: 0, phase: 0, rotate: true, name: t('patterns.pattern2') },
+      { type: 'sine', freq: 2, amp: 3, dir: 90, phase: 0, rotate: true, name: t('patterns.pattern3') },
+      { type: 'sine', freq: 2, amp: 3, dir: 45, phase: 0, rotate: false, name: t('patterns.pattern4') },
+      { type: 'double', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: t('patterns.pattern5') },
+      { type: 'circular', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: t('patterns.pattern6') },
+      { type: 'sine', freq: 1, amp: 3, dir: 0, phase: 0, rotate: true, name: t('patterns.pattern7') },
+      { type: 'double', freq: 3, amp: 3, dir: 0, phase: 0, rotate: false, name: t('patterns.pattern8') },
+      { type: 'sine', freq: 2, amp: 3, dir: 0, phase: 90, rotate: true, name: t('patterns.pattern9') },
+      { type: 'checkerboard', freq: 2, amp: 3, dir: 0, phase: 0, rotate: false, name: t('patterns.pattern10') },
     ];
 
     const index = ((num - 1) % patterns.length + patterns.length) % patterns.length;
@@ -109,7 +111,7 @@ const WoodBlockWave3D = () => {
   useEffect(() => {
     const newBasePattern = generateBasePattern(currentParams);
     setBasePattern(newBasePattern);
-  }, [patternNumber]);
+  }, [patternNumber, i18n.language]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -223,15 +225,42 @@ const WoodBlockWave3D = () => {
     };
   }, [gridSize, patternNumber, basePattern, zoomLevel]);
 
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+    document.documentElement.lang = lng;
+  };
+
   return (
     <div className="w-full h-screen flex flex-col bg-gray-100">
       <div className="bg-white shadow-md p-4">
-        <h1 className="text-2xl font-bold mb-4 text-gray-800">木製ブロック 規則的パターン 3D可視化</h1>
+        <div className="flex justify-between items-center mb-4">
+          <h1 className="text-2xl font-bold text-gray-800">{t('title')}</h1>
+          <div className="flex gap-2">
+            <button
+              onClick={() => changeLanguage('ja')}
+              className={`px-3 py-1 rounded text-sm ${i18n.language === 'ja' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              日本語
+            </button>
+            <button
+              onClick={() => changeLanguage('en')}
+              className={`px-3 py-1 rounded text-sm ${i18n.language === 'en' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              English
+            </button>
+            <button
+              onClick={() => changeLanguage('zh')}
+              className={`px-3 py-1 rounded text-sm ${i18n.language === 'zh' ? 'bg-blue-500 text-white' : 'bg-gray-200'}`}
+            >
+              中文
+            </button>
+          </div>
+        </div>
 
         <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              パターン番号（1-10）
+              {t('patternNumberLabel')}
             </label>
             <input
               type="number"
@@ -245,7 +274,7 @@ const WoodBlockWave3D = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              グリッドサイズ: {gridSize}×{gridSize}
+              {t('gridSizeLabel', { size: gridSize })}
             </label>
             <input
               type="range"
@@ -259,26 +288,26 @@ const WoodBlockWave3D = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              ズーム: {zoomLevel.toFixed(1)}x
+              {t('zoomLabel', { zoom: zoomLevel.toFixed(1) })}
             </label>
             <div className="flex gap-2 mt-1">
               <button
                 onClick={() => setZoomLevel(Math.max(0.5, zoomLevel - 0.2))}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm"
               >
-                ー
+                {t('zoomOut')}
               </button>
               <button
                 onClick={() => setZoomLevel(1)}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm"
               >
-                リセット
+                {t('resetZoom')}
               </button>
               <button
                 onClick={() => setZoomLevel(Math.min(3, zoomLevel + 0.2))}
                 className="flex-1 bg-gray-200 hover:bg-gray-300 px-3 py-1 rounded text-sm"
               >
-                ＋
+                {t('zoomIn')}
               </button>
             </div>
           </div>
@@ -288,24 +317,27 @@ const WoodBlockWave3D = () => {
               onClick={() => setShowGrid(!showGrid)}
               className="w-full bg-blue-500 hover:bg-blue-600 text-white font-medium py-2 px-4 rounded"
             >
-              {showGrid ? '基本パターンを非表示' : '基本パターン(10×10)を表示'}
+              {showGrid ? t('hidePattern') : t('togglePattern')}
             </button>
           </div>
         </div>
 
         <div className="bg-blue-50 border border-blue-200 rounded p-3 mb-3">
-          <div className="font-semibold text-blue-900">パターン {patternNumber}: {currentParams.name}</div>
+          <div className="font-semibold text-blue-900">
+            {t('patternInfo', { number: patternNumber, name: currentParams.name })}
+          </div>
           <div className="text-sm text-blue-700 mt-1">
-            10×10の基本パターンを{[2, 3, 7, 9].includes(patternNumber) ? '単純タイル配置' : '反転タイル配置'} |
-            高さ: 0階層(0mm) ～ 3階層(6mm) の4段階
+            {t('patternDescription', {
+              arrangement: [2, 3, 7, 9].includes(patternNumber) ? t('simpleTile') : t('flippedTile')
+            })}
           </div>
         </div>
 
         <div className="text-sm text-gray-600 space-y-1">
-          <p>🔄 <strong>反転タイル配置:</strong> 格子・同心円などは奇数タイルで反転（斜め縞は反転なし）</p>
-          <p>📐 <strong>4段階の高さ:</strong> 0mm(階層0) → 2mm(階層1) → 4mm(階層2) → 6mm(階層3)</p>
-          <p>🔍 <strong>ズーム:</strong> マウスホイールまたはボタンで拡大縮小（0.5x～3x）</p>
-          <p>📏 <strong>グリッドサイズ:</strong> 5×5 ～ 30×30まで対応</p>
+          <p dangerouslySetInnerHTML={{ __html: t('flipInfo') }}></p>
+          <p dangerouslySetInnerHTML={{ __html: t('heightInfo') }}></p>
+          <p dangerouslySetInnerHTML={{ __html: t('zoomInfo') }}></p>
+          <p dangerouslySetInnerHTML={{ __html: t('gridInfo') }}></p>
         </div>
       </div>
 
@@ -314,17 +346,15 @@ const WoodBlockWave3D = () => {
 
         {showGrid && basePattern.length > 0 && (
           <div className="w-1/3 bg-white p-4 overflow-auto">
-            <h3 className="font-bold text-lg mb-2">基本パターン 10×10（mm）</h3>
+            <h3 className="font-bold text-lg mb-2">{t('basePatternTitle')}</h3>
             <p className="text-xs text-gray-600 mb-3">
-              {[2, 3, 7, 9].includes(patternNumber)
-                ? '※斜め縞パターンは反転なしで配置されます'
-                : '※奇数タイルでは反転して配置されます'}
+              {[2, 3, 7, 9].includes(patternNumber) ? t('diagonalNote') : t('flippedNote')}
             </p>
             <div className="text-xs font-mono">
               <table className="border-collapse w-full">
                 <thead>
                   <tr>
-                    <th className="border px-2 py-1 bg-gray-100 text-xs">列→</th>
+                    <th className="border px-2 py-1 bg-gray-100 text-xs">{t('columnHeader')}</th>
                     {basePattern[0]?.map((_, colIdx) => (
                       <th key={colIdx} className="border px-2 py-1 bg-gray-100 text-xs">{colIdx + 1}</th>
                     ))}
@@ -333,7 +363,9 @@ const WoodBlockWave3D = () => {
                 <tbody>
                   {basePattern.map((row, rowIdx) => (
                     <tr key={rowIdx}>
-                      <td className="border px-2 py-1 bg-gray-100 font-semibold text-xs">行{rowIdx + 1}</td>
+                      <td className="border px-2 py-1 bg-gray-100 font-semibold text-xs">
+                        {t('rowHeader', { number: rowIdx + 1 })}
+                      </td>
                       {row.map((height, colIdx) => {
                         const colors = ['#8B4513', '#A0522D', '#CD853F', '#DAA520'];
                         const colorIndex = height / 2;
@@ -357,19 +389,19 @@ const WoodBlockWave3D = () => {
               <div className="mt-3 space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#8B4513'}}></div>
-                  <span>0mm（階層0）</span>
+                  <span>{t('heightLevel0')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#A0522D'}}></div>
-                  <span>2mm（階層1）</span>
+                  <span>{t('heightLevel1')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#CD853F'}}></div>
-                  <span>4mm（階層2）</span>
+                  <span>{t('heightLevel2')}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#DAA520'}}></div>
-                  <span>6mm（階層3）</span>
+                  <span>{t('heightLevel3')}</span>
                 </div>
               </div>
             </div>
