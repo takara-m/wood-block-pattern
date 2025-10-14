@@ -5,7 +5,8 @@ import { useTranslation } from 'react-i18next';
 const WoodBlockWave3D = () => {
   const { t, i18n } = useTranslation();
   const mountRef = useRef(null);
-  const [gridSize, setGridSize] = useState(30);
+  const [rows, setRows] = useState(30);
+  const [cols, setCols] = useState(30);
   const [patternNumber, setPatternNumber] = useState(1);
   const [showGrid, setShowGrid] = useState(false);
   const [basePattern, setBasePattern] = useState([]);
@@ -68,9 +69,9 @@ const WoodBlockWave3D = () => {
           height = ((i + j) % 2 === 0) ? amplitude : -amplitude;
         }
 
-        // 高さを4段階に離散化（0, 2, 4, 6mm）
-        const discreteHeight = Math.round((height + amplitude) / 2) * 2;
-        row.push(Math.max(0, Math.min(6, discreteHeight)));
+        // 高さを4段階に離散化（0, 2.5, 5, 7.5mm）
+        const discreteHeight = Math.round((height + amplitude) / 2) * 2.5;
+        row.push(Math.max(0, Math.min(7.5, discreteHeight)));
       }
       pattern.push(row);
     }
@@ -152,7 +153,7 @@ const WoodBlockWave3D = () => {
     scene.add(directionalLight);
 
     // ベースボード
-    const boardGeometry = new THREE.BoxGeometry(gridSize * 1.5, 0.5, gridSize * 1.5);
+    const boardGeometry = new THREE.BoxGeometry(cols * 2, 0.5, rows * 2);
     const boardMaterial = new THREE.MeshStandardMaterial({ color: 0x8b7355 });
     const board = new THREE.Mesh(boardGeometry, boardMaterial);
     board.position.y = -0.5;
@@ -160,23 +161,23 @@ const WoodBlockWave3D = () => {
     scene.add(board);
 
     // ブロック生成
-    const blockSize = 1.5;
-    const blockGeometry = new THREE.BoxGeometry(1.4, 1.4, 1.4);
+    const blockSize = 2; // 1辺2cm
+    const blockGeometry = new THREE.BoxGeometry(2, 2, 2); // 2cm x 2cm x 2cm
     const blocks = [];
     const pattern = basePattern.length > 0 ? basePattern : generateBasePattern(currentParams);
 
     // 4段階の高さに応じた色
     const heightColors = [
       new THREE.Color(0x8B4513), // 0mm - 濃い茶色 (階層0)
-      new THREE.Color(0xA0522D), // 2mm (階層1)
-      new THREE.Color(0xCD853F), // 4mm (階層2)
-      new THREE.Color(0xDAA520), // 6mm (階層3)
+      new THREE.Color(0xA0522D), // 2.5mm (階層1)
+      new THREE.Color(0xCD853F), // 5mm (階層2)
+      new THREE.Color(0xDAA520), // 7.5mm (階層3)
     ];
 
-    for (let i = 0; i < gridSize; i++) {
-      for (let j = 0; j < gridSize; j++) {
+    for (let i = 0; i < rows; i++) {
+      for (let j = 0; j < cols; j++) {
         const discreteHeight = getHeightAt(i, j, pattern, patternNumber);
-        const heightIndex = discreteHeight / 2; // 0,2,4,6 -> 0,1,2,3
+        const heightIndex = discreteHeight / 2.5; // 0,2.5,5,7.5 -> 0,1,2,3
 
         const color = heightColors[Math.min(heightIndex, 3)];
         const blockMaterial = new THREE.MeshStandardMaterial({
@@ -187,9 +188,9 @@ const WoodBlockWave3D = () => {
 
         const block = new THREE.Mesh(blockGeometry, blockMaterial);
         block.position.set(
-          i * blockSize - gridSize * blockSize / 2 + blockSize / 2,
-          discreteHeight / 10 + 0.7,
-          j * blockSize - gridSize * blockSize / 2 + blockSize / 2
+          i * blockSize - rows * blockSize / 2 + blockSize / 2,
+          discreteHeight / 10 + 1,
+          j * blockSize - cols * blockSize / 2 + blockSize / 2
         );
         block.castShadow = true;
         scene.add(block);
@@ -223,7 +224,7 @@ const WoodBlockWave3D = () => {
       boardMaterial.dispose();
       renderer.dispose();
     };
-  }, [gridSize, patternNumber, basePattern, zoomLevel]);
+  }, [rows, cols, patternNumber, basePattern, zoomLevel]);
 
   const changeLanguage = (lng) => {
     i18n.changeLanguage(lng);
@@ -257,7 +258,7 @@ const WoodBlockWave3D = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('patternNumberLabel')}
@@ -274,15 +275,29 @@ const WoodBlockWave3D = () => {
 
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
-              {t('gridSizeLabel', { size: gridSize })}
+              {t('rowsLabel', { rows })}
             </label>
             <input
-              type="range"
-              min="5"
+              type="number"
+              min="1"
               max="30"
-              value={gridSize}
-              onChange={(e) => setGridSize(Number(e.target.value))}
-              className="w-full mt-2"
+              value={rows}
+              onChange={(e) => setRows(Number(e.target.value))}
+              className="w-full border rounded px-3 py-2"
+            />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('colsLabel', { cols })}
+            </label>
+            <input
+              type="number"
+              min="1"
+              max="30"
+              value={cols}
+              onChange={(e) => setCols(Number(e.target.value))}
+              className="w-full border rounded px-3 py-2"
             />
           </div>
 
@@ -368,7 +383,7 @@ const WoodBlockWave3D = () => {
                       </td>
                       {row.map((height, colIdx) => {
                         const colors = ['#8B4513', '#A0522D', '#CD853F', '#DAA520'];
-                        const colorIndex = height / 2;
+                        const colorIndex = height / 2.5; // 0,2.5,5,7.5 -> 0,1,2,3
                         return (
                           <td
                             key={colIdx}
