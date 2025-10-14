@@ -200,8 +200,9 @@ const WoodBlockWave3D = () => {
 
     // アニメーション
     let angle = 0;
+    let animationId;
     const animate = () => {
-      requestAnimationFrame(animate);
+      animationId = requestAnimationFrame(animate);
       angle += 0.005;
       const dist = baseDist;
       camera.position.x = dist * Math.cos(angle);
@@ -214,8 +215,20 @@ const WoodBlockWave3D = () => {
 
     // クリーンアップ
     return () => {
+      // アニメーション停止
+      if (animationId) {
+        cancelAnimationFrame(animationId);
+      }
+
+      // イベントリスナー削除
       renderer.domElement.removeEventListener('wheel', handleWheel);
-      mountRef.current?.removeChild(renderer.domElement);
+
+      // すべての子要素を削除（重要！）
+      while (mountRef.current?.firstChild) {
+        mountRef.current.removeChild(mountRef.current.firstChild);
+      }
+
+      // Three.jsリソースの解放
       blocks.forEach(block => {
         block.geometry.dispose();
         block.material.dispose();
