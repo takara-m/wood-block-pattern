@@ -11,6 +11,9 @@ const WoodBlockWave3D = () => {
   const [showGrid, setShowGrid] = useState(false);
   const [basePattern, setBasePattern] = useState([]);
   const [zoomLevel, setZoomLevel] = useState(1);
+  const [layerThickness, setLayerThickness] = useState(2.5);
+  const [basePatternRows, setBasePatternRows] = useState(10);
+  const [basePatternCols, setBasePatternCols] = useState(10);
 
   // パターン番号から規則的なパラメータを生成（10×10基本パターン）
   const getPatternParams = (num) => {
@@ -33,18 +36,19 @@ const WoodBlockWave3D = () => {
 
   const currentParams = getPatternParams(patternNumber);
 
-  // 10×10の基本パターンを生成
-  const generateBasePattern = (params) => {
-    const baseSize = 10;
+  // 基本パターンを生成（可変サイズ）
+  const generateBasePattern = (params, numRows, numCols) => {
     const pattern = [];
     const { type: waveType, freq: frequency, amp: amplitude, dir: direction, phase, rotate } = params;
+    const maxHeight = layerThickness * 3; // 最大高さ（3層）
+    const avgSize = (numRows + numCols) / 2; // 周波数計算用の平均サイズ
 
-    for (let i = 0; i < baseSize; i++) {
+    for (let i = 0; i < numRows; i++) {
       const row = [];
-      for (let j = 0; j < baseSize; j++) {
+      for (let j = 0; j < numCols; j++) {
         let height;
-        let x = i - baseSize / 2;
-        let z = j - baseSize / 2;
+        let x = i - numRows / 2;
+        let z = j - numCols / 2;
 
         // rotate=trueの場合、座標系を45度回転（縞模様を///にする）
         if (rotate) {
@@ -56,22 +60,22 @@ const WoodBlockWave3D = () => {
         if (waveType === 'sine') {
           const angle = direction * Math.PI / 180;
           const rotatedX = x * Math.cos(angle) + z * Math.sin(angle);
-          height = amplitude * Math.sin(rotatedX * Math.PI * frequency / baseSize + phase * Math.PI / 180);
+          height = amplitude * Math.sin(rotatedX * Math.PI * frequency / avgSize + phase * Math.PI / 180);
         } else if (waveType === 'double') {
           height = amplitude * (
-            Math.sin(x * Math.PI * frequency / baseSize) * 0.5 +
-            Math.sin(z * Math.PI * frequency / baseSize) * 0.5
+            Math.sin(x * Math.PI * frequency / avgSize) * 0.5 +
+            Math.sin(z * Math.PI * frequency / avgSize) * 0.5
           );
         } else if (waveType === 'circular') {
           const dist = Math.sqrt(x * x + z * z);
-          height = amplitude * Math.sin(dist * Math.PI * frequency / baseSize);
+          height = amplitude * Math.sin(dist * Math.PI * frequency / avgSize);
         } else if (waveType === 'checkerboard') {
           height = ((i + j) % 2 === 0) ? amplitude : -amplitude;
         }
 
-        // 高さを4段階に離散化（0, 2.5, 5, 7.5mm）
-        const discreteHeight = Math.round((height + amplitude) / 2) * 2.5;
-        row.push(Math.max(0, Math.min(7.5, discreteHeight)));
+        // 高さを4段階に離散化（layerThicknessに基づく）
+        const discreteHeight = Math.round((height + amplitude) / 2) * layerThickness;
+        row.push(Math.max(0, Math.min(maxHeight, discreteHeight)));
       }
       pattern.push(row);
     }
@@ -80,29 +84,30 @@ const WoodBlockWave3D = () => {
 
   // パターンをタイル状に繰り返して拡張（反転処理を追加）
   const getHeightAt = (i, j, pattern, patternNum) => {
-    const baseSize = pattern.length;
+    const baseRows = pattern.length;
+    const baseCols = pattern[0]?.length || 0;
 
     // パターン2,3,7,9（斜め縞）は反転しない
     const noFlipPatterns = [2, 3, 7, 9];
     const shouldFlip = !noFlipPatterns.includes(patternNum);
 
     // どのタイルに属するか計算
-    const tileX = Math.floor(i / baseSize);
-    const tileY = Math.floor(j / baseSize);
+    const tileX = Math.floor(i / baseRows);
+    const tileY = Math.floor(j / baseCols);
 
     // タイル内の座標
-    let localI = i % baseSize;
-    let localJ = j % baseSize;
+    let localI = i % baseRows;
+    let localJ = j % baseCols;
 
     if (shouldFlip) {
       // 奇数列のタイルは水平反転
       if (tileX % 2 === 1) {
-        localI = baseSize - 1 - localI;
+        localI = baseRows - 1 - localI;
       }
 
       // 奇数行のタイルは垂直反転
       if (tileY % 2 === 1) {
-        localJ = baseSize - 1 - localJ;
+        localJ = baseCols - 1 - localJ;
       }
     }
 
@@ -110,9 +115,9 @@ const WoodBlockWave3D = () => {
   };
 
   useEffect(() => {
-    const newBasePattern = generateBasePattern(currentParams);
+    const newBasePattern = generateBasePattern(currentParams, basePatternRows, basePatternCols);
     setBasePattern(newBasePattern);
-  }, [patternNumber, i18n.language]);
+  }, [patternNumber, i18n.language, layerThickness, basePatternRows, basePatternCols]);
 
   useEffect(() => {
     if (!mountRef.current) return;
@@ -164,7 +169,7 @@ const WoodBlockWave3D = () => {
     const blockSize = 2; // 1辺2cm
     const blockGeometry = new THREE.BoxGeometry(2, 2, 2); // 2cm x 2cm x 2cm
     const blocks = [];
-    const pattern = basePattern.length > 0 ? basePattern : generateBasePattern(currentParams);
+    const pattern = basePattern.length > 0 ? basePattern : generateBasePattern(currentParams, basePatternRows, basePatternCols);
 
     // 4段階の高さに応じた色
     const heightColors = [
@@ -177,7 +182,7 @@ const WoodBlockWave3D = () => {
     for (let i = 0; i < rows; i++) {
       for (let j = 0; j < cols; j++) {
         const discreteHeight = getHeightAt(i, j, pattern, patternNumber);
-        const heightIndex = discreteHeight / 2.5; // 0,2.5,5,7.5 -> 0,1,2,3
+        const heightIndex = discreteHeight / layerThickness; // 層数を計算
 
         const color = heightColors[Math.min(heightIndex, 3)];
         const blockMaterial = new THREE.MeshStandardMaterial({
@@ -271,7 +276,7 @@ const WoodBlockWave3D = () => {
           </div>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-5 gap-4 mb-4">
+        <div className="grid grid-cols-1 md:grid-cols-6 gap-4 mb-4">
           <div>
             <label className="block text-sm font-medium text-gray-700 mb-1">
               {t('patternNumberLabel')}
@@ -312,6 +317,22 @@ const WoodBlockWave3D = () => {
               onChange={(e) => setCols(Number(e.target.value))}
               className="w-full border rounded px-3 py-2"
             />
+          </div>
+
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              {t('layerThicknessLabel', { thickness: layerThickness })}
+            </label>
+            <select
+              value={layerThickness}
+              onChange={(e) => setLayerThickness(Number(e.target.value))}
+              className="w-full border rounded px-3 py-2"
+            >
+              <option value={2.5}>2.5mm</option>
+              <option value={5}>5mm</option>
+              <option value={7.5}>7.5mm</option>
+              <option value={10}>10mm</option>
+            </select>
           </div>
 
           <div>
@@ -363,9 +384,48 @@ const WoodBlockWave3D = () => {
 
         <div className="text-sm text-gray-600 space-y-1">
           <p dangerouslySetInnerHTML={{ __html: t('flipInfo') }}></p>
-          <p dangerouslySetInnerHTML={{ __html: t('heightInfo') }}></p>
+          <p dangerouslySetInnerHTML={{
+            __html: t('heightInfo', {
+              layer0: '0mm',
+              layer1: `${layerThickness}mm`,
+              layer2: `${layerThickness * 2}mm`,
+              layer3: `${layerThickness * 3}mm`
+            })
+          }}></p>
           <p dangerouslySetInnerHTML={{ __html: t('zoomInfo') }}></p>
           <p dangerouslySetInnerHTML={{ __html: t('gridInfo') }}></p>
+        </div>
+
+        <div className="mt-4 bg-green-50 border border-green-200 rounded p-3">
+          <h3 className="font-semibold text-green-900 mb-2">{t('basePatternSizeTitle')}</h3>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('basePatternRowsLabel', { rows: basePatternRows })}
+              </label>
+              <input
+                type="number"
+                min="5"
+                max="30"
+                value={basePatternRows}
+                onChange={(e) => setBasePatternRows(Number(e.target.value))}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-1">
+                {t('basePatternColsLabel', { cols: basePatternCols })}
+              </label>
+              <input
+                type="number"
+                min="5"
+                max="30"
+                value={basePatternCols}
+                onChange={(e) => setBasePatternCols(Number(e.target.value))}
+                className="w-full border rounded px-3 py-2"
+              />
+            </div>
+          </div>
         </div>
       </div>
 
@@ -374,7 +434,7 @@ const WoodBlockWave3D = () => {
 
         {showGrid && basePattern.length > 0 && (
           <div className="w-1/3 bg-white p-4 overflow-auto">
-            <h3 className="font-bold text-lg mb-2">{t('basePatternTitle')}</h3>
+            <h3 className="font-bold text-lg mb-2">{t('basePatternTitle', { rows: basePatternRows, cols: basePatternCols })}</h3>
             <p className="text-xs text-gray-600 mb-3">
               {[2, 3, 7, 9].includes(patternNumber) ? t('diagonalNote') : t('flippedNote')}
             </p>
@@ -396,7 +456,7 @@ const WoodBlockWave3D = () => {
                       </td>
                       {row.map((height, colIdx) => {
                         const colors = ['#8B4513', '#A0522D', '#CD853F', '#DAA520'];
-                        const colorIndex = height / 2.5; // 0,2.5,5,7.5 -> 0,1,2,3
+                        const colorIndex = height / layerThickness; // 層数を計算
                         return (
                           <td
                             key={colIdx}
@@ -417,19 +477,19 @@ const WoodBlockWave3D = () => {
               <div className="mt-3 space-y-1">
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#8B4513'}}></div>
-                  <span>{t('heightLevel0')}</span>
+                  <span>{t('heightLevel0', { height: '0' })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#A0522D'}}></div>
-                  <span>{t('heightLevel1')}</span>
+                  <span>{t('heightLevel1', { height: layerThickness })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#CD853F'}}></div>
-                  <span>{t('heightLevel2')}</span>
+                  <span>{t('heightLevel2', { height: layerThickness * 2 })}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <div className="w-6 h-6 border" style={{backgroundColor: '#DAA520'}}></div>
-                  <span>{t('heightLevel3')}</span>
+                  <span>{t('heightLevel3', { height: layerThickness * 3 })}</span>
                 </div>
               </div>
             </div>
